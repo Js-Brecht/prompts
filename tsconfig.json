@@ -1,0 +1,27 @@
+{
+	"compilerOptions": {
+		// Target latest version of ECMAScript.
+    "target": "esnext",
+    "types": [
+      "node"
+    ],
+		// Search under node_modules for non-relative imports.
+		"moduleResolution": "node",
+		// Process & infer types from .js files.
+		"allowJs": true,
+    // Allow Babel to transform files.
+    "noEmit": true,
+		// Enable strictest settings like strictNullChecks & noImplicitAny.
+		"strict": true,
+		// Import non-ES modules as default imports.
+    "esModuleInterop": true,
+    // Allow importing commonjs style module.exports
+    "allowSyntheticDefaultImports": true
+	},
+	"include": [
+		"lib"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
