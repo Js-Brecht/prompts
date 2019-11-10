@@ -1,4 +1,4 @@
-const prompts = require('../lib');
+const prompts = require('../dist');
 
 prompts([{
   name: 'textPrompt',
