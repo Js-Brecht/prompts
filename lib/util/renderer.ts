@@ -36,7 +36,10 @@ const getEmptyState = (): IState => {
 	}
 }
 
-const escPattern = /((?:\u001b|\u009b)(?:\[[0-9;]*[A-Zsum~]|[0-9]))/;
+// Taken from readline/util; added `s` and `u` (Save/Restore cursor alternates)
+const escPattern = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqrsuy=><]/;
+// const escPattern = /((?:\u001b|\u009b)(?:\[[0-9;]*[A-Zsum~$^]|[0-9]))/;
+
 export class Renderer {
 	/**
 	 * If defined, then this renderer will track certain events on stdin
