@@ -55,23 +55,54 @@ export class Renderer {
 	private firstRender: boolean = true;
 	/** Tracks where the cursor lands in the user input */
 	private _cursor = 0;
-	/** Tracks how many rows the cursor will need to be moved when a line is rendered */
-	private virtOffset?: number;
+	/** Tracks how many rows the cursor will need to be moved from its current position
+	 *  when a line is rendered */
+	private moveOffset?: number;
 	/**
 	 * The actual offset of the cursor at any given time
 	 * This gets set in a couple of ways:
-	 * * It's updated when a key is pressed that will change the cursor position
-	 * in the input string
 	 * * It's set to the inputPos.offsetY when `print()` is called
-	 * * When lines are rendered, it is updated to the last row of the last line
+	 * * As lines are rendered, it is updated to the last row of the last line
 	 * rendered
+	 * * When the cursor position is "reset" (cursor moved to where it needs to appear
+	 * in the input), it is set to the inputPos.offsetY.
 	 */
 	private cursorOffset: number = 0;
-	private inputPos: IInputPos = { X: 0, Y: 0, offsetX: 0, offsetY: 0 };
+	/** Tracks where the input line lands in comparison to the 0-index of the output */
+	private inputPos: IInputPos = {
+		/**
+		 * * If cursor is handled automatically, this marks where the cursor was
+		 * initially placed on the input row (using `cursor.save`), marking the end
+		 * of the prompt and beginning of the input.
+		 * * If not, this marks the position of the `cursor.save` character.
+		 */
+		X: 0,
+		/** This marks the which row of the render state the input line lands on */
+		Y: 0,
+		/**
+		 * This indicates what column on the screen the cursor needs to land on to be in the
+		 * correct position for input.
+		 */
+		offsetX: 0,
+		/**
+		 * This indicates what row, offset from the first output row, the cursor needs to land on
+		 * to be in the correct position for input
+		 */
+		offsetY: 0
+	};
+	/** The actual length of the input */
 	private inputLen: number = 0;
-
+	/** Keeps track of what the last render looked like */
 	private prevState: IState = getEmptyState();
+	/** Tracks the current rendering process */
 	private curState: IState = getEmptyState();
+	/** Gets set when the currow row down (of the current render state) needs to be drawn
+	 * This can happen in a few instances:
+	 * * When it's the first render
+	 * * When the currently rendering row exceeds the number of previous rendered rows
+	 * * When the number of physically drawn rows (includes wrapped lines) has changed
+	 * * When the input line has wrapped (number of drawn rows has changed).
+	 */
 	private drawAll: boolean = false;
 
 	public constructor(stdio?: IStdio);
@@ -251,7 +282,9 @@ export class Renderer {
 			idx > this.prevState.virtualRows ||
 			this.prevState.render[idx] !== render;
 		if (drawLine) {
-			const lastRowLen = lastRowCol(plain[1].length)
+			// Add a newline at the end of this row, but only if we have exceeded the
+			// number of lines that were rendered previously, and only if we are not
+			// on the last line of output.
 			const addLine = idx > this.prevState.virtualRows && idx < maxLines;
 			this.out.write(
 				cursor.move(0, this.virtOffset) + cursor.to(0) +
@@ -260,15 +293,19 @@ export class Renderer {
 				erase.lineEnd +
 				(addLine ? `\n` : ``)
 			);
-			// Move cursorOffset to match where the virtual Offset will cause drawing to happen
-			if (this.virtOffset !== 0) this.cursorOffset += this.virtOffset;
+			// Set cursorOffset to match where the moveOffset will cause drawing to occur
+			if (this.moveOffset !== 0) this.cursorOffset += this.moveOffset;
 			// Account for extra rows, due to wrapping, in the output
 			this.cursorOffset += plain[0] - 1;
 			// Account for a new line at the end
 			if (addLine) this.cursorOffset += 1;
-			this.virtOffset = 0;
+			// If a newline was not added at end of output, then the next time
+			// the cursor is moved, the extra line down should be accounted for
+			this.moveOffset = addLine ? 0 : 1;
 		} else {
-			this.virtOffset += plain[0];
+			// Track the number of output rows the cursor will need to be moved to draw
+			// the next line that needs to render
+			this.moveOffset += plain[0];
 		}
 	}
 
