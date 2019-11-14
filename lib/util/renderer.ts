@@ -235,6 +235,9 @@ export class Renderer {
           }
           procText = procText.slice(endIdx);
 			}
+			if (idx === this.inputPos.Y && lastRowCol(plain[1]) === this.screenMaxWidth) {
+				procText += `\n`;
+			}
 			plain[1] += procText;
 			plain[0] = lines(plain[1]);
 			rendered += procText;
