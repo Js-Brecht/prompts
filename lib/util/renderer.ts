@@ -202,39 +202,40 @@ export class Renderer {
 		const renderLines = data.split('\n');
 		this.curState = getEmptyState();
 		this.cursorOffset = this.inputPos.offsetY;
+
 		this.out.write(cursor.hide);
-    for (const [idx, ln] of renderLines.entries()) {
-      let procText = ln;
-      let matched: RegExpExecArray | null;
-      let rendered: IRenderState = '';
+		for (const [idx, ln] of renderLines.entries()) {
+			let procText = ln;
+			let matched: RegExpExecArray | null;
+			let rendered: IRenderState = '';
 			let plain: IPlainState = [1, ''];
-      // Parse the ANSI codes on each line of input
-      while (null !== (matched = escPattern.exec(procText))) {
-        const ansiCode = matched[0];
-        const terminator = ansiCode[ansiCode.length - 1];
-        const startIdx = matched.index;
-        const endIdx = startIdx + ansiCode.length;
-          if (startIdx > 0) {
-            const procTextSect = procText.slice(0, startIdx);
-            plain[1] += procTextSect
-            rendered += procTextSect;
-          }
-          // Only allow ANSI style codes to feed into the output
-          if (terminator === 'm') rendered += ansiCode;
-          // Process cursor input position
-          if (terminator === '7' || terminator === 's') {
-						if (!this.autoCursor || this.firstRender) {
-							this.inputPos = {
-								X: plain[1].length,
-								Y: idx,
-								offsetX: 0,
-								offsetY: 0
-							}
-						} else {
-							this.inputLen = plain[1].length - this.inputPos.X;
+			// Parse the ANSI codes on each line of input
+			while (null !== (matched = escPattern.exec(procText))) {
+				const ansiCode = matched[0];
+				const terminator = ansiCode[ansiCode.length - 1];
+				const startIdx = matched.index;
+				const endIdx = startIdx + ansiCode.length;
+				if (startIdx > 0) {
+					const procTextSect = procText.slice(0, startIdx);
+					plain[1] += procTextSect
+					rendered += procTextSect;
+				}
+				// Only allow ANSI style codes to feed into the output
+				if (terminator === 'm') rendered += ansiCode;
+				// Process cursor input position
+				if (terminator === '7' || terminator === 's') {
+					if (!this.autoCursor || this.firstRender) {
+						this.inputPos = {
+							X: plain[1].length,
+							Y: idx,
+							offsetX: 0,
+							offsetY: 0
 						}
-          }
-          procText = procText.slice(endIdx);
+					} else {
+						this.inputLen = plain[1].length - this.inputPos.X;
+					}
+				}
+				procText = procText.slice(endIdx);
 			}
 			if (idx === this.inputPos.Y && lastRowCol(plain[1]) === this.screenMaxWidth) {
 				procText += `\n`;
