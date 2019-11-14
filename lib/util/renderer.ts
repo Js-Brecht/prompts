@@ -116,7 +116,7 @@ export class Renderer {
 		this.handleKeypress = this.handleKeypress.bind(this);
 		if (this.rlInterface) {
 			this.in.on('keypress', this.handleKeypress);
-			this.rlInterface.on('close', () => {
+			this.rlInterface.once('close', () => {
 				this.in.removeListener('keypress', this.handleKeypress);
 			})
 		}
