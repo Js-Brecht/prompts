@@ -17,5 +17,5 @@ export function lines(msg: string | number, perLine = process.stdout.columns): n
 export function lastRowCol(output: string | number, perLine = process.stdout.columns): number {
 	const chkLen = typeof output === 'number' ? output : output.length;
 	if (!perLine) return chkLen;
-	return chkLen - (perLine * (lines(chkLen) - 1));
+	return chkLen - (perLine * (lines(chkLen, perLine) - 1));
 }
