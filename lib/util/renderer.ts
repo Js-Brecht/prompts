@@ -124,8 +124,13 @@ export class Renderer {
 
 	public get cursor(): number { return this._cursor; }
 	public set cursor(x: number) {
+		if (x < 0) x = 0;
+		if (x > this.inputLen) x = this.inputLen;
 		this._cursor = x;
 		this.resetInputCursor();
+	}
+	private get screenMaxWidth(): number {
+		return this.out.columns;
 	}
 
 	private calcInputOffset(): void {
@@ -142,14 +147,6 @@ export class Renderer {
 		const offset = this.inputPos.offsetY - this.cursorOffset;
 		this.out.write(cursor.move(0, offset) + cursor.to(this.inputPos.offsetX));
 		this.cursorOffset = this.inputPos.offsetY;
-	}
-	public moveInputCursor(dx: number) {
-		(() => {
-			this._cursor += dx;
-			if (this._cursor < 0) return this._cursor = 0;
-			if (this._cursor > this.inputLen) return this._cursor = this.inputLen;
-		})();
-		this.resetInputCursor();
 	}
 	private handleKeypress(data: any, key: Key) {
 		switch (key.name) {
