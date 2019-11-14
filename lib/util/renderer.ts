@@ -261,7 +261,7 @@ export class Renderer {
 		// Reset some variables for next run
 		this.firstRender = false;
 		this.prevState = this.curState;
-		this.virtOffset = undefined;
+		this.moveOffset = undefined;
 	}
 
 	/**
@@ -274,7 +274,7 @@ export class Renderer {
 	private sprintf(plain: IPlainState, render: IRenderState, maxLines: number) {
 		const idx = this.curState.virtualRows;
 		if (this.inputPos.Y === idx) this.calcInputOffset();
-		if (this.virtOffset === undefined) this.virtOffset = -this.inputPos.offsetY;
+		if (this.moveOffset === undefined) this.moveOffset = -this.inputPos.offsetY;
 
 		if (this.prevState.plain[idx] && this.prevState.plain[idx][0] !== plain[0])
 			this.drawAll = true;
@@ -287,7 +287,7 @@ export class Renderer {
 			// on the last line of output.
 			const addLine = idx > this.prevState.virtualRows && idx < maxLines;
 			this.out.write(
-				cursor.move(0, this.virtOffset) + cursor.to(0) +
+				cursor.move(0, this.moveOffset) + cursor.to(0) +
 				render +
 				(lastRowLen === this.out.columns ? `\n` : ``) +
 				erase.lineEnd +
