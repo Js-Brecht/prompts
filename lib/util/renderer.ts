@@ -130,7 +130,7 @@ export class Renderer {
 		if (x < 0) x = 0;
 		if (x > this.inputLen) x = this.inputLen;
 		this._cursor = x;
-		this.resetInputCursor();
+		this.restoreCursor();
 	}
 	private get screenMaxWidth(): number {
 		return this.out.columns;
@@ -145,7 +145,7 @@ export class Renderer {
 			this.inputPos.offsetY += 1;
 		}
 	}
-	public resetInputCursor(): void {
+	public restoreCursor(): void {
 		this.calcInputOffset();
 		const offset = this.inputPos.offsetY - this.cursorOffset;
 		this.out.write(cursor.move(0, offset) + cursor.to(this.inputPos.offsetX));
@@ -257,7 +257,7 @@ export class Renderer {
 			this.clearAfterEnd();
 
 		// Reset the input cursor to where it needs to be
-		this.resetInputCursor();
+		this.restoreCursor();
 		this.out.write(cursor.show);
 
 		// Reset some variables for next run
