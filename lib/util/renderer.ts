@@ -137,7 +137,7 @@ export class Renderer {
 		const offsetX = this.inputPos.X + this.cursor;
 		this.inputPos.offsetX = lastRowCol(offsetX);
 		this.inputPos.offsetY = this.getOffsetFrom0(this.inputPos.Y - 1, offsetX);
-		if (this.inputPos.offsetX === this.out.columns) {
+		if (this.inputPos.offsetX === this.screenMaxWidth) {
 			this.inputPos.offsetX = 0;
 			this.inputPos.offsetY += 1;
 		}
