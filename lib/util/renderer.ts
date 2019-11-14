@@ -202,6 +202,7 @@ export class Renderer {
 		const renderLines = data.split('\n');
 		this.curState = getEmptyState();
 		this.cursorOffset = this.inputPos.offsetY;
+		this.out.write(cursor.hide);
     for (const [idx, ln] of renderLines.entries()) {
       let procText = ln;
       let matched: RegExpExecArray | null;
@@ -255,6 +256,7 @@ export class Renderer {
 
 		// Reset the input cursor to where it needs to be
 		this.resetInputCursor();
+		this.out.write(cursor.show);
 
 		// Reset some variables for next run
 		this.firstRender = false;
