@@ -187,14 +187,12 @@ export class Renderer {
 	/**
 	 * This will drop the cursor down to the last row, last column, of the
 	 * output, and then issue a CLEAR-END-OF-SCREEN ANSI code.
-	 * @param cursorOffset Where the cursor current resides, in comparison
-	 * to the 0-index row position of the output.
 	 */
-	private clearAfterEnd(cursorOffset: number): void {
+	private clearAfterEnd(): void {
 		const lastIdx = this.curState.virtualRows;
 		const lastRow = this.curState.actualRows;
 		const lastLineCol = lastRowCol(this.curState.plain[lastIdx][1].length);
-		const offset = lastRow - cursorOffset;
+		const offset = (lastRow - 1) - this.cursorOffset;
 		this.out.write(cursor.move(0, offset) + cursor.to(lastLineCol) + erase.down(1));
 	}
 
