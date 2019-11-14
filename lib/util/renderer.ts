@@ -288,7 +288,6 @@ export class Renderer {
 			this.out.write(
 				cursor.move(0, this.moveOffset) + cursor.to(0) +
 				render +
-				(lastRowLen === this.out.columns ? `\n` : ``) +
 				erase.lineEnd +
 				(addLine ? `\n` : ``)
 			);
