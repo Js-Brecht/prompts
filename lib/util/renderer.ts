@@ -251,7 +251,7 @@ export class Renderer {
 		// Clear to the end of the screen, if we haven't rendered
 		// past the end of the previous output
 		if (this.curState.actualRows < this.prevState.actualRows)
-			this.clearAfterEnd(this.cursorOffset);
+			this.clearAfterEnd();
 
 		// Reset the input cursor to where it needs to be
 		this.resetInputCursor();
