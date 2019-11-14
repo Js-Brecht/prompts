@@ -151,17 +151,15 @@ export class Renderer {
 	private handleKeypress(data: any, key: Key) {
 		switch (key.name) {
 			case 'backspace':
-			case 'left': {this.moveInputCursor(-1); break;}
-			case 'right': {this.moveInputCursor(+1); break;}
-			case 'home': {this._cursor = 0; break;}
-			case 'end': {this._cursor = this.inputLen; break;}
+			case 'left': { this.cursor -= 1; break; }
+			case 'right': { this.cursor += 1; break; }
+			case 'home': { this.cursor = 0; break; }
+			case 'end': { this.cursor = this.inputLen; break; }
 			default: {
 				if (key.sequence) {
 					const keyCode = key.sequence.charCodeAt(0);
 					if (keyCode >= 32 && keyCode <= 126) {
-						this._cursor += 1;
-						this.calcInputOffset();
-						this.resetInputCursor();
+						this.cursor += 1;
 					}
 				}
 			}
