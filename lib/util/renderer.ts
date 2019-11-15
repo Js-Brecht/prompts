@@ -1,6 +1,7 @@
 import { Interface, Key } from 'readline';
-import { lines, lastRowCol } from './lines';
 import { cursor, erase } from 'sisteransi';
+import { lines, lastRowCol } from './lines';
+import { InputHandler } from './inputHandler';
 
 declare module 'sisteransi' {
 	export namespace cursor {
@@ -45,32 +46,24 @@ export class Renderer {
 	 * If defined, then this renderer will track certain events on stdin
 	 * It should have already been initialized elsewhere.
 	 */
-	private rlInterface?: Interface;
-	private in: NodeJS.ReadStream;
-	private out: NodeJS.WriteStream;
-	/**
-	 * Determines whether or not the cursor will be tracked automatically.
-	 * If a readline interface is provided, then this will be set to true.
-	 * If set to true, `cursor.save` events after the first one will be ignored.
-	 */
-	private autoCursor: boolean = false;
+	private inputHandler?: InputHandler;
+	private out: NodeJS.WriteStream = process.stdout;
 	/** Tracks whether this has rendered for the first time */
 	private firstRender: boolean = true;
-	/** Tracks where the cursor lands in the user input */
-	private _cursor = 0;
 	/** Tracks how many rows the cursor will need to be moved from its current position
 	 *  when a line is rendered */
 	private moveOffset?: number;
 	/**
-	 * The actual offset of the cursor at any given time
+	 * The actual offset of the cursor, in relation to 0-index, at any given time
 	 * This gets set in a couple of ways:
 	 * * It's set to the inputPos.offsetY when `print()` is called
 	 * * As lines are rendered, it is updated to the last row of the last line
 	 * rendered
-	 * * When the cursor position is "reset" (cursor moved to where it needs to appear
-	 * in the input), it is set to the inputPos.offsetY.
+	 * * When the cursor position is "restored" (cursor moved to where it needs to appear
+	 * in the input), this is set to the inputPos.offsetY.
 	 */
 	private cursorOffset: number = 0;
+	private cursorVisible: boolean = true;
 	/** Tracks where the input line lands in comparison to the 0-index of the output */
 	private inputPos: IInputPos = {
 		/**
@@ -93,8 +86,6 @@ export class Renderer {
 		 */
 		offsetY: 0
 	};
-	/** The actual length of the input */
-	private inputLen: number = 0;
 	/** Keeps track of what the last render looked like */
 	private prevState: IState = getEmptyState();
 	/** Tracks the current rendering process */
@@ -102,37 +93,33 @@ export class Renderer {
 	/** Gets set when the currow row down (of the current render state) needs to be drawn
 	 * This can happen in a few instances:
 	 * * When it's the first render
-	 * * When the currently rendering row exceeds the number of previous rendered rows
-	 * * When the number of physically drawn rows (includes wrapped lines) has changed
+	 * * When the currently rendering row exceeds the number of previously rendered rows
+	 * * When the number of drawn rows (includes wrapped lines) has changed
 	 * * When the input line has wrapped (number of drawn rows has changed).
 	 */
 	private drawAll: boolean = false;
 
-	public constructor(stdio?: IStdio);
-	public constructor(stdio?: IStdio, rl?: Interface);
-	public constructor(stdio: IStdio = { stdin: process.stdin, stdout: process.stdout }, rl?: Interface) {
-		this.in = stdio.stdin;
-		this.out = stdio.stdout;
-		this.rlInterface = rl;
-
-		this.autoCursor = this.rlInterface !== undefined;
-		this.handleKeypress = this.handleKeypress.bind(this);
-		if (this.rlInterface) {
-			this.in.on('keypress', this.handleKeypress);
-			this.rlInterface.once('close', () => {
-				this.in.removeListener('keypress', this.handleKeypress);
-			})
+	public constructor(inputHandler?: InputHandler) {
+		this.out = process.stdout;
+		if (inputHandler) {
+			this.inputHandler = inputHandler;
+			this.inputHandler.registerRenderer(this);
 		}
 	}
 
-	public get cursor(): number { return this._cursor; }
-	public set cursor(x: number) {
-		if (x < 0) x = 0;
-		if (x > this.inputLen) x = this.inputLen;
-		this._cursor = x;
-		this.restoreCursor();
+	public get cursor(): number {
+		if (this.inputHandler) return this.inputHandler.cursor;
+		return 0;
 	}
-	private get screenMaxWidth(): number {
+	public hideCursor(): void {
+		this.out.write(cursor.hide);
+		this.cursorVisible = false;
+	}
+	public showCursor(): void {
+		this.out.write(cursor.show);
+		this.cursorVisible = true;
+	}
+	private get screenWidth(): number {
 		return this.out.columns;
 	}
 
@@ -140,7 +127,7 @@ export class Renderer {
 		const offsetX = this.inputPos.X + this.cursor;
 		this.inputPos.offsetX = lastRowCol(offsetX);
 		this.inputPos.offsetY = this.getOffsetFrom0(this.inputPos.Y - 1, offsetX);
-		if (this.inputPos.offsetX === this.screenMaxWidth) {
+		if (this.inputPos.offsetX === this.screenWidth) {
 			this.inputPos.offsetX = 0;
 			this.inputPos.offsetY += 1;
 		}
@@ -150,23 +137,6 @@ export class Renderer {
 		const offset = this.inputPos.offsetY - this.cursorOffset;
 		this.out.write(cursor.move(0, offset) + cursor.to(this.inputPos.offsetX));
 		this.cursorOffset = this.inputPos.offsetY;
-	}
-	private handleKeypress(data: any, key: Key) {
-		switch (key.name) {
-			case 'backspace':
-			case 'left': { this.cursor -= 1; break; }
-			case 'right': { this.cursor += 1; break; }
-			case 'home': { this.cursor = 0; break; }
-			case 'end': { this.cursor = this.inputLen; break; }
-			default: {
-				if (key.sequence) {
-					const keyCode = key.sequence.charCodeAt(0);
-					if (keyCode >= 32 && keyCode <= 126) {
-						this.cursor += 1;
-					}
-				}
-			}
-		}
 	}
 
 	/**
@@ -225,20 +195,18 @@ export class Renderer {
 				if (terminator === 'm') rendered += ansiCode;
 				// Process cursor input position
 				if (terminator === '7' || terminator === 's') {
-					if (!this.autoCursor || this.firstRender) {
+					if (!this.inputHandler || this.firstRender) {
 						this.inputPos = {
 							X: plain[1].length,
 							Y: idx,
 							offsetX: 0,
 							offsetY: 0
 						}
-					} else {
-						this.inputLen = plain[1].length - this.inputPos.X;
 					}
 				}
 				procText = procText.slice(endIdx);
 			}
-			if (idx === this.inputPos.Y && lastRowCol(plain[1]) === this.screenMaxWidth) {
+			if (idx === this.inputPos.Y && lastRowCol(plain[1]) === this.screenWidth) {
 				procText += `\n`;
 			}
 			plain[1] += procText;
@@ -258,7 +226,7 @@ export class Renderer {
 
 		// Reset the input cursor to where it needs to be
 		this.restoreCursor();
-		this.out.write(cursor.show);
+		if (this.cursorVisible) this.out.write(cursor.show);
 
 		// Reset some variables for next run
 		this.firstRender = false;

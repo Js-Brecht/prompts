@@ -1,6 +1,6 @@
 const prompts = require('../dist');
 
-prompts([{
+prompts([/* {
   name: 'textEmoji',
   type: 'text',
   message: 'Emoji text prompt',
@@ -24,7 +24,7 @@ prompts([{
     }
     return true;
   },
-}, {
+},  */{
   name: 'textOnePrompt',
   type: 'text',
   message: 'textOnePrompt',
