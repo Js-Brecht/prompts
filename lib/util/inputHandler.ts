@@ -1,6 +1,4 @@
 import { Key, Interface, createInterface, emitKeypressEvents } from 'readline';
-// import { ReadStream } from 'tty';
-import { Readable } from 'stream';
 import { EventEmitter } from 'events';
 import { Renderer } from './renderer';
 import { beep, cursor } from 'sisteransi';
@@ -8,6 +6,15 @@ type IInputTypes = string | number | [string, string] | [number, number] | RegEx
 type IValidInputs = IInputTypes | IInputTypes[];
 type IFilterKeyTypes = string | Key | RegExp;
 type IFilterKeys = IFilterKeyTypes | IFilterKeyTypes[];
+
+// This are not exposed in types.  Readline is stable; submit PR for @types/readline change
+// See issue https://github.com/nodejs/node/issues/30347
+declare module 'readline' {
+	interface Interface {
+		line: string;
+		cursor: number;
+	}
+}
 
 interface IInputHandlerOpts {
 	validInputs: IValidInputs;
@@ -18,9 +25,6 @@ enum ProcInputType {
 	append = 'append',
 	replace = 'replace',
 }
-
-const KEYPRESS_DECODER = Symbol('keypress-decoder');
-const kLineObjectStream = Symbol('line object stream');
 
 function isPrintable(chr?: string | number) {
 	const code = chr === undefined ?
@@ -35,21 +39,15 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 	private rl: Interface;
 	private readonly stdin = process.stdin;
 	private readonly stdout = process.stdout;
-	private readonly [KEYPRESS_DECODER] = () => void 0;
-	private readonly [kLineObjectStream] = new Readable();
-	public readonly [Symbol.asyncIterator] = () => this[kLineObjectStream][Symbol.asyncIterator]();
 
 	private _paused: boolean = false;
-	private _trackInput: boolean = false;
 	private _renderer?: Renderer;
-	private _cursor: number = 0;
-	private _value: string = '';
 
 	private validInput?: ([number, number] | number | RegExp)[];
 	private filterKeys?: (Key | RegExp)[];
-	public constructor(opts: IInputHandlerOpts) {
-		// super((process.stdin as any).fd);
+	public constructor(stdin?: NodeJS.ReadStream, opts?: IInputHandlerOpts) {
 		super();
+		if (stdin) this.stdin = stdin;
 
 		if (!this.stdin.isTTY) {
 			throw new Error('Input stream must be a TTY!');
@@ -72,111 +70,28 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 		this.handleKeypress = this.handleKeypress.bind(this);
 		this.stdin.on('keypress', this.handleKeypress);
 
+		this.rl.on('line', (d) => {
+			this.value = d;
+		});
 		this.rl.once('close', () => {
 			this.stdin.setRawMode(wasRaw);
 			this.stdin.removeListener('keypress', this.handleKeypress);
 		});
 
 	}
-
-	public get cursor(): number { return this._cursor; }
-	private cursorCheck(x: number): number {
-		if (x < 0) return 0;
-		if (x > this.inputLen) return this.inputLen;
-		return x;
-	}
-	private moveCursor(x: number): void {
-		this._cursor = this.cursorCheck(x);
-	}
-	private shiftCursor(dx: number): void {
-		this._cursor = this.cursorCheck(this.cursor + dx);
-		if (this._renderer) this._renderer.restoreCursor();
-	}
-	public hideCursor(): void {
-		if (this._renderer) return this._renderer.hideCursor();
-		this.stdout.write(cursor.show);
-	}
-	public showCursor(): void {
-		if (this._renderer) return this._renderer.showCursor();
-		this.stdout.write(cursor.show);
-	}
-
-	public get value(): string {
-		return this._value;
-	}
-	public get inputLen(): number {
-		return this._value.length;
-	}
-	public reset(): void {
-		this.setValue('');
-	}
-	public setValue(newVal: string): void {
-		this._value = newVal;
-		this.moveCursor(this._value.length);
-	}
-
 	private handleKeypress(chr: any, key: Key): void {
 		if (this._paused) return;
-		let emitKeypress = true;
+		const oldCursor = this.cursor;
+		const oldValue = this.value;
 		if (this.validInput && isPrintable(key.sequence)) {
-			emitKeypress = this.isValidInput(key.sequence);
+			if (!this.isValidInput(key.sequence)) return this.ding();
 		}
-		if (emitKeypress && this.filterKeys) {
-			emitKeypress = !this.isFilteredInput(key);
+		if (this.filterKeys) {
+			if (this.isFilteredInput(key)) return this.ding();
 		}
-		if (emitKeypress) {
-			if (this.trackInput) {
-				let reRender = true;
-				switch (key.name) {
-					case 'backspace': {
-						if (this.cursor === 0) return;
-						if (this.cursor > 0) {
-							const pre = this._value.slice(0, this.cursor - 1);
-							const suf = this._value.slice(this.cursor);
-							this._value = `${pre}${suf}`;
-						}
-						this.shiftCursor(-1);
-						break;
-					}
-					case 'delete': {
-						if (this.cursor >= this.inputLen) return;
-						const pre = this._value.slice(0, this.cursor);
-						const suf = this._value.slice(this.cursor + 1);
-						this._value = `${pre}${suf}`;
-						break;
-					}
-					case 'left': { this.shiftCursor(-1); break; }
-					case 'right': { this.shiftCursor(+1); break; }
-					case 'home': { this.moveCursor(0); break; }
-					case 'end': { this.moveCursor(this.inputLen); break; }
-					default: {
-						if (chr && isPrintable(key.sequence)) {
-							if (this.cursor === this.inputLen) {
-								this._value += chr
-							} else {
-								const pre = this._value.slice(0, this.cursor);
-								const suf = this._value.slice(this.cursor);
-								this._value = `${pre}${chr}${suf}`
-							}
-							this.shiftCursor(1);
-						} else {
-							reRender = false;
-						}
-					}
-				}
-			}
-			this.emit('keypress', chr, key);
-		} else {
-			this.ding();
-		}
-	}
-
-	public get readline(): Interface {
-		return this.rl;
-	}
-
-	public ding(): void {
-		this.stdout.write(beep);
+		this.emit('keypress', chr, key);
+		if (oldCursor !== this.cursor && this._renderer) this._renderer.restoreCursor();
+		if (oldValue !== this.value) this.emit('change', this.value);
 	}
 	public pause(): this {
     this._paused = true;
@@ -188,15 +103,48 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
     this.stdin.resume();
 		return this;
 	}
+	public close(): void {
+		this.emit('close');
+		this.rl.close();
+		this.removeAllListeners();
+	}
 
-	public get trackInput(): boolean {
-		return this._trackInput;
+	public get cursor(): number {
+		return this.readline.cursor;
 	}
-	public set trackInput(track: boolean) {
-		this._trackInput = track;
+	public hideCursor(): void {
+		if (this._renderer) return this._renderer.hideCursor();
+		this.stdout.write(cursor.show);
 	}
+	public showCursor(): void {
+		if (this._renderer) return this._renderer.showCursor();
+		this.stdout.write(cursor.show);
+	}
+
+	public get value(): string {
+		return this.readline.line;
+	}
+	public set value(newVal: string) {
+		this.readline.line = newVal;
+		this.readline.cursor = this.value.length;
+		this.emit('change', newVal);
+	}
+	public reset(): void {
+		this.value = '';
+	}
+	public get inputLen(): number {
+		return this.value.length;
+	}
+
+	public get readline(): Interface {
+		return this.rl;
+	}
+
+	public ding(): void {
+		this.stdout.write(beep);
+	}
+
 	public registerRenderer(newRenderer: Renderer) {
-		this.trackInput = true;
 		this._renderer = newRenderer;
 	}
 
@@ -247,13 +195,14 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 	}
 	private isFilteredInput(key: Key): boolean {
 		if (!this.filterKeys) return false;
+		const altKeys = ['ctrl', 'meta', 'shift'];
 		for (const keyCheck of this.filterKeys) {
 			if (keyCheck instanceof RegExp) {
 				if (key.sequence && keyCheck.test(key.sequence)) return true;
 			} else {
 				if (keyCheck.sequence && key.sequence && key.sequence === keyCheck.sequence) return true;
 				if (keyCheck.name && key.name && key.name === keyCheck.name) {
-					if (['ctrl', 'meta', 'shift'].every((prop) => !!(keyCheck as any)[prop] === !!(key as any)[prop]))
+					if (altKeys.every((prop) => !!(keyCheck as any)[prop] === !!(key as any)[prop]))
 						return true;
 				}
 			}
@@ -261,7 +210,7 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 		return true;
 	}
 
-
+	//#region ReadableStream interface compliance
 	public get readable(): boolean {
 		return this._paused;
 	}
@@ -287,9 +236,26 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 	public wrap(oldStream: NodeJS.ReadableStream): this {
 		return this;
 	}
-	// public [Symbol.asyncIterator](): AsyncIterableIterator<string | Buffer> {
-
-	// }
+	/**
+	 * Needs to be defined to be compliant with the ReadableStream interface
+	 * It has to return an object with an `asyncIterator`, so just return
+	 * the `readline` Interface's asyncIterator, rather than recreate it.
+	 *
+	 * `readline` will create a new Readable stream, and have it return all
+	 * of the input that the Interface receives.
+	 *
+	 * So, it goes like this:
+	 * this[Symbol.asyncIterator() =>
+	 * 		readline[Symbol.asyncIterator]() => new Readable()[Symbol.asyncIterator]()
+	 *
+	 * This should work, because it will essentially iterate over the input
+	 * this class feeds it, asyncronously, so it will work for a `for/await` loop.
+	 *
+	 */
+	public [Symbol.asyncIterator](): AsyncIterableIterator<string | Buffer> {
+		return this.readline[Symbol.asyncIterator]();
+	}
+	//#endregion
 }
 
 export default InputHandler;

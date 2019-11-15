@@ -165,8 +165,10 @@ export class Renderer {
 		const lastIdx = this.curState.virtualRows;
 		const lastRow = this.curState.actualRows;
 		const lastLineCol = lastRowCol(this.curState.plain[lastIdx][1].length);
-		const offset = (lastRow - 1) - this.cursorOffset;
-		this.out.write(cursor.move(0, offset) + cursor.to(lastLineCol) + erase.down(1));
+		// const offset = (lastRow - 1) - this.cursorOffset;
+		const offset = this.cursorOffset - (lastRow + 1);
+		// if (offset !== 0) this.out.write();
+		this.out.write(cursor.move(0, offset) + cursor.to(lastLineCol) + erase.down(1) + '\n');
 	}
 
 	public print(data: string) {
@@ -243,8 +245,8 @@ export class Renderer {
 	 */
 	private sprintf(plain: IPlainState, render: IRenderState, maxLines: number) {
 		const idx = this.curState.virtualRows;
-		if (this.inputPos.Y === idx) this.calcInputOffset();
 		if (this.moveOffset === undefined) this.moveOffset = -this.inputPos.offsetY;
+		if (this.inputPos.Y === idx) this.calcInputOffset();
 
 		if (this.prevState.plain[idx] && this.prevState.plain[idx][0] !== plain[0])
 			this.drawAll = true;
