@@ -252,25 +252,21 @@ export class Renderer {
 			idx > this.prevState.virtualRows ||
 			this.prevState.render[idx] !== render;
 		if (drawLine) {
-			// Add a newline at the end of this row, but only if we have exceeded the
-			// number of lines that were rendered previously, and only if we are not
-			// on the last line of output.
-			const addLine = idx > this.prevState.virtualRows && idx < maxLines;
 			this.out.write(
 				cursor.move(0, this.moveOffset) + cursor.to(0) +
 				render +
 				erase.lineEnd +
-				(addLine ? `\n` : ``)
+				`\n`
 			);
 			// Set cursorOffset to match where the moveOffset will cause drawing to occur
 			if (this.moveOffset !== 0) this.cursorOffset += this.moveOffset;
 			// Account for extra rows, due to wrapping, in the output
 			this.cursorOffset += plain[0] - 1;
 			// Account for a new line at the end
-			if (addLine) this.cursorOffset += 1;
+			this.cursorOffset += 1;
 			// If a newline was not added at end of output, then the next time
 			// the cursor is moved, the extra line down should be accounted for
-			this.moveOffset = addLine ? 0 : 1;
+			this.moveOffset = 0;
 		} else {
 			// Track the number of output rows the cursor will need to be moved to draw
 			// the next line that needs to render
