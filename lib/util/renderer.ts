@@ -253,6 +253,11 @@ export class Renderer {
 		let drawLine = this.drawAll ||
 			idx > this.prevState.virtualRows ||
 			this.prevState.render[idx] !== render;
+
+		// If not drawing this line, then track the number of output rows the cursor
+		// will need to be moved to draw the next line that does need to be drawn
+		if (!drawLine) return this.moveOffset += plain[0];
+
 		if (drawLine) {
 			this.out.write(
 				cursor.move(0, this.moveOffset) + cursor.to(0) +
@@ -267,10 +272,6 @@ export class Renderer {
 			// Account for the new line at the end
 			this.cursorOffset += 1;
 			this.moveOffset = 0;
-		} else {
-			// Track the number of output rows the cursor will need to be moved to draw
-			// the next line that needs to render
-			this.moveOffset += plain[0];
 		}
 	}
 
