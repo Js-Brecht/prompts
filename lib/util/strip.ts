@@ -9,3 +9,5 @@ export function strip(str: string): string {
   const RGX = new RegExp(pattern, 'g');
   return typeof str === 'string' ? str.replace(RGX, '') : str;
 }
+
+export default strip;

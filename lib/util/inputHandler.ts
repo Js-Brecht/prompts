@@ -292,3 +292,4 @@ export class InputHandler extends EventEmitter implements NodeJS.ReadableStream 
 	// }
 }
 
+export default InputHandler;

@@ -19,3 +19,5 @@ export function lastRowCol(output: string | number, perLine = process.stdout.col
 	if (!perLine) return chkLen;
 	return chkLen - (perLine * (lines(chkLen, perLine) - 1));
 }
+
+export default lines;
