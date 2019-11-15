@@ -260,14 +260,12 @@ export class Renderer {
 				erase.lineEnd +
 				`\n`
 			);
-			// Set cursorOffset to match where the moveOffset will cause drawing to occur
+			// Set cursorOffset to match where the moveOffset caused drawing to occur
 			if (this.moveOffset !== 0) this.cursorOffset += this.moveOffset;
-			// Account for extra rows, due to wrapping, in the output
+			// Account for extra rows, due to wrapping in the output
 			this.cursorOffset += plain[0] - 1;
-			// Account for a new line at the end
+			// Account for the new line at the end
 			this.cursorOffset += 1;
-			// If a newline was not added at end of output, then the next time
-			// the cursor is moved, the extra line down should be accounted for
 			this.moveOffset = 0;
 		} else {
 			// Track the number of output rows the cursor will need to be moved to draw
