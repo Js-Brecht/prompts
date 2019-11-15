@@ -219,7 +219,7 @@ export class Renderer {
 			this.curState.virtualRows += 1;
 			this.curState.actualRows += plain[0];
 
-			this.sprintf(plain, rendered, renderLines.length);
+			this.sprintf(plain, rendered);
 		}
 		// Clear to the end of the screen, if we haven't rendered
 		// past the end of the previous output
@@ -243,7 +243,7 @@ export class Renderer {
 	 * @param {IRenderState} render The
 	 * @param {number} maxLines
 	 */
-	private sprintf(plain: IPlainState, render: IRenderState, maxLines: number) {
+	private sprintf(plain: IPlainState, render: IRenderState) {
 		const idx = this.curState.virtualRows;
 		if (this.moveOffset === undefined) this.moveOffset = -this.inputPos.offsetY;
 		if (this.inputPos.Y === idx) this.calcInputOffset();
