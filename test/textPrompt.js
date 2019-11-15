@@ -24,7 +24,7 @@ prompts([/* {
     }
     return true;
   },
-},  */{
+},  *//* {
   name: 'textOnePrompt',
   type: 'text',
   message: 'textOnePrompt',
@@ -36,7 +36,7 @@ prompts([/* {
     }
     return true;
   },
-}, {
+},  */{
   name: 'textTwoPrompt',
   type: 'text',
   message: 'textTwoPrompt\nTwo line prompt!',
