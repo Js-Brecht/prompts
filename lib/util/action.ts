@@ -15,7 +15,7 @@ type IAction = boolean
   | 'nextPage'
   | 'prevPage'
 
-export default (key: Key, isSelect: boolean): IAction => {
+export const action = (key: Key, isSelect: boolean): IAction => {
   if (key.meta) return;
 
   if (key.ctrl) {
@@ -48,3 +48,5 @@ export default (key: Key, isSelect: boolean): IAction => {
 
   return false;
 };
+
+export default action;

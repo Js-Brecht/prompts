@@ -1,11 +1,9 @@
-'use strict';
+import { strip } from './strip';
+import { erase, cursor } from 'sisteransi';
 
-const strip = require('./strip').strip;
-const { erase, cursor } = require('sisteransi');
+const width = (str: string) => [...strip(str)].length;
 
-const width = str => [...strip(str)].length;
-
-module.exports = function(prompt, perLine = process.stdout.columns) {
+export const clear = (prompt: string, perLine = process.stdout.columns) => {
   if (!perLine) return erase.line + cursor.to(0);
 
   let rows = 0;
@@ -16,3 +14,5 @@ module.exports = function(prompt, perLine = process.stdout.columns) {
 
   return (erase.line + cursor.prevLine()).repeat(rows - 1) + erase.line + cursor.to(0);
 };
+
+export default clear;
