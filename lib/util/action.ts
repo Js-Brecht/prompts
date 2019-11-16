@@ -15,7 +15,7 @@ type IAction = boolean
   | 'nextPage'
   | 'prevPage'
 
-export const action = (key: Key, isSelect: boolean): IAction => {
+export const action = (key: Key, isSelect: boolean): IAction | void => {
   if (key.meta) return;
 
   if (key.ctrl) {
