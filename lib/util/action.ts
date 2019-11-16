@@ -1,8 +1,23 @@
-'use strict';
+import { Key } from 'readline';
+type IAction = boolean
+	| 'first'
+  | 'last'
+	| 'up'
+  | 'down'
+	| 'left'
+	| 'right'
+  | 'submit'
+  | 'abort'
+  | 'reset'
+  | 'delete'
+  | 'deleteForward'
+  | 'next'
+  | 'nextPage'
+  | 'prevPage'
 
-module.exports = (key, isSelect) => {
+export const action = (key: Key, isSelect: boolean): IAction | void => {
   if (key.meta) return;
-  
+
   if (key.ctrl) {
     if (key.name === 'a') return 'first';
     if (key.name === 'c') return 'abort';
@@ -10,7 +25,7 @@ module.exports = (key, isSelect) => {
     if (key.name === 'e') return 'last';
     if (key.name === 'g') return 'reset';
   }
-  
+
   if (isSelect) {
     if (key.name === 'j') return 'down';
     if (key.name === 'k') return 'up';
@@ -33,3 +48,5 @@ module.exports = (key, isSelect) => {
 
   return false;
 };
+
+export default action;
