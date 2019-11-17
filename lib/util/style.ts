@@ -19,7 +19,7 @@ export const styles: Readonly<IStyles> = Object.freeze({
   invisible: { scale: 0, render: input => '' },
   default: { scale: 1, render: input => `${input}` }
 });
-export const render = (type: keyof typeof styles) => styles[type] || styles.default;
+export const render = (type?: keyof IStyles) => type && styles[type] || styles.default;
 
 export interface ISymbols {
 	aborted: string;
